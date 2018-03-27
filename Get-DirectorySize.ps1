@@ -16,6 +16,7 @@ function Get-DirectorySize {
 
     param (
         [parameter(ValueFromPipeline=$True)]
+        [ValidateScript({ Test-Path $_ -PathType Container })]
             [string]$directoryPath = ".",
         [boolean]$recurse = $true,
         [parameter(DontShow)]
