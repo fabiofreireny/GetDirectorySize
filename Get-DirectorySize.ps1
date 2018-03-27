@@ -18,46 +18,48 @@ function Get-DirectorySize {
         [parameter(ValueFromPipeline=$True)]
         [ValidateScript({ Test-Path $_ -PathType Container })]
             [string]$directoryPath = ".",
-        [boolean]$recurse = $true,
-        [parameter(DontShow)]
-            [boolean]$firstCall = $true
+        [boolean]$recurse = $true
     )
 
-    #Initialize array, but only on first call
-    if ($firstCall) {
-        $result = @()
-    }
+    function doWork {
+        param (
+            [string]$directoryPath,
+            [boolean]$recurse
+        )
 
-    #This is faster then running "gci -file" then "gci -directory" as file system is scanned only once
-    $folder     = gci $directoryPath
-    $subFolders = $folder | ? PSIsContainer -eq $true
-    $files      = $folder | ? PSIsContainer -eq $false
+        #This is faster then running "gci -file" then "gci -directory" as file system is scanned only once
+        $folder     = gci $directoryPath
+        $subFolders = $folder | ? PSIsContainer -eq $true
+        $files      = $folder | ? PSIsContainer -eq $false
 
-    #Calculate file size totals
-    if ($files) {
-        $folderSize = [math]::round(($files | measure -sum -Property Length).sum / 1MB,3)
-        $folderName = ($folder[0].PSParentPath -split ("::"))[1]
-    } else {
-        $folderSize = 0
-        $folderName = $directoryPath
-    }
-
-    $property = [PSCustomObject]@{
-        "SizeInMB" = $folderSize
-        "Folder"   = $folderName
-    }
-
-    $result += $property
-
-    #If subfolders exist then recursively find their sizes
-    if ($recurse) {
-        if ($subFolders) {
-            $subFolders | % {
-                Write-Verbose "Calculating $_"
-                Get-DirectorySize $_.FullName -firstCall:$false
+        #If subfolders exist then recursively find their sizes
+        if ($recurse) {
+            if ($subFolders) {
+                $subFolders | % {
+                    Write-Verbose "Calculating $_"
+                    doWork -directoryPath $_.FullName -recurse:$recurse
+                }
             }
         }
+
+        #Calculate file size totals
+        if ($files) {
+            $folderSize = [math]::round(($files | measure -sum -Property Length).sum / 1MB,3)
+            $folderName = ($folder[0].PSParentPath -split ("::"))[1]
+        } else {
+            $folderSize = 0
+            $folderName = $directoryPath
+        }
+
+        $property = [PSCustomObject]@{
+            "SizeInMB" = $folderSize
+            "Folder"   = $folderName
+        }
+
+        $property
     }
+
+    $result = doWork -directoryPath $directoryPath -recurse:$recurse
 
     $result
 }
