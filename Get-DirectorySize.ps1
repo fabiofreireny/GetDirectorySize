@@ -1,10 +1,10 @@
 function Get-DirectorySize {
     <#
     .SYNOPSIS
-    Calculates directory size
+    Calculates directory size and file count
 
     .DESCRIPTION
-    Calculates directory size (sum of all file sizes) in specified directory and (optionally) all subdirectories
+    Calculates directory size (sum of all file sizes) and file count in specified directory and (by default) all subdirectories
 
     Default is current directory
 
@@ -20,7 +20,6 @@ function Get-DirectorySize {
             [string]$directoryPath = ".",
         [boolean]$recurse = $true
     )
-
     function doWork {
         param (
             [string]$directoryPath,
@@ -44,22 +43,27 @@ function Get-DirectorySize {
 
         #Calculate file size totals
         if ($files) {
+            $fileCount  = ($files | measure).Count
             $folderSize = [math]::round(($files | measure -sum -Property Length).sum / 1MB,3)
             $folderName = ($folder[0].PSParentPath -split ("::"))[1]
         } else {
+            $fileCount  = 0
             $folderSize = 0
             $folderName = $directoryPath
         }
 
         $property = [PSCustomObject]@{
-            "SizeInMB" = $folderSize
-            "Folder"   = $folderName
+            "FileCount" = $fileCount
+            "SizeInMB"  = $folderSize
+            "Folder"    = $folderName
         }
 
         $property
     }
 
-    $result = doWork -directoryPath $directoryPath -recurse:$recurse
+    #In case a relative path is provided
+    $directoryPath = (Convert-Path -path $directoryPath)
 
-    $result
+    doWork -directoryPath $directoryPath -recurse:$recurse
+
 }
