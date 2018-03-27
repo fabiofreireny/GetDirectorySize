@@ -26,20 +26,12 @@ function Get-DirectorySize {
             [boolean]$recurse
         )
 
+        Write-Verbose "Calculating $_"
+
         #This is faster then running "gci -file" then "gci -directory" as file system is scanned only once
         $folder     = gci $directoryPath
         $subFolders = $folder | ? PSIsContainer -eq $true
         $files      = $folder | ? PSIsContainer -eq $false
-
-        #If subfolders exist then recursively find their sizes
-        if ($recurse) {
-            if ($subFolders) {
-                $subFolders | % {
-                    Write-Verbose "Calculating $_"
-                    doWork -directoryPath $_.FullName -recurse:$recurse
-                }
-            }
-        }
 
         #Calculate file size totals
         if ($files) {
@@ -59,6 +51,15 @@ function Get-DirectorySize {
         }
 
         $property
+
+        #If subfolders exist then recursively find their sizes
+        if ($recurse) {
+            if ($subFolders) {
+                $subFolders | % {
+                    doWork -directoryPath $_.FullName -recurse:$recurse
+                }
+            }
+        }
     }
 
     #In case a relative path is provided
